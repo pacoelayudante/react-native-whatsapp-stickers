@@ -23,6 +23,9 @@ import androidx.annotation.Nullable;
 import android.text.TextUtils;
 import android.util.Log;
 
+import java.io.FilenameFilter;
+import java.io.File;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -143,15 +146,27 @@ public class StickerContentProvider extends ContentProvider {
     }
 
     private synchronized void readContentFile(@NonNull Context context) {
-        try (InputStream contentsInputStream = context.getAssets().open(CONTENT_FILE_NAME)) {
+        final File[] jsonsEncontrados = context.getFilesDir().listFiles(new FilenameFilter() {
+            public boolean accept(File dir, String name) {
+                return name.toLowerCase().endsWith(".json");
+            }
+        });
+
+        if (jsonsEncontrados.Length == 0) {
+            stickerPackList = new List<StickerPack>();
+            return;
+        }
+
+        try (InputStream contentsInputStream = context.openFileInput( jsonsEncontrados[0] )) {
+        // try (InputStream contentsInputStream = context.getAssets().open(CONTENT_FILE_NAME)) {
             stickerPackList = ContentFileParser.parseStickerPacks(contentsInputStream);
         } catch (IOException | IllegalStateException e) {
             throw new RuntimeException(CONTENT_FILE_NAME + " file has some issues: " + e.getMessage(), e);
         }
     }
 
-    public List<StickerPack> getStickerPackList() {
-        if (stickerPackList == null) {
+    public List<StickerPack> getStickerPackList(boolean forceUpdate = false) {
+        if (stickerPackList == null || forceUpdate) {
             readContentFile(Objects.requireNonNull(getContext()));
         }
         return stickerPackList;
